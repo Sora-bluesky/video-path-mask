@@ -1,0 +1,28 @@
+# Internal development docs
+SKILL.md
+CLAUDE.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Temp / OS
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# Video processing temp files
+vpm_*/
+frames_sample/
