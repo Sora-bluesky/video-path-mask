@@ -1,16 +1,18 @@
+[日本語](README_ja.md)
+
 # video-path-mask
 
-動画内に映り込んだファイルパス・ユーザー名・APIキーなどの機密テキストを、テンプレートマッチングで自動検出してぼかしでマスクするツール。
+Auto-detect and blur sensitive text (file paths, usernames, API keys) in screen recording videos using OpenCV template matching.
 
-## なぜ必要か
+## Why
 
-Claude CodeやCursorの操作を画面録画してSNSやブログで共有したい。でもターミナルにはファイルパスが映る。`c:\Users\あなたの名前\Documents\...` が全世界に公開される。
+You record your Claude Code or Cursor session to share on social media or your blog. But the terminal shows file paths like `c:\Users\your-name\Documents\...` for the world to see.
 
-手作業で動画を編集するのは面倒だし、見落としが怖い。このツールはOpenCVのテンプレートマッチングで **全フレームを自動スキャン** して、該当箇所だけにぼかしをかける。
+Manually editing videos is tedious and error-prone. This tool uses OpenCV template matching to **scan every frame automatically** and blur only the matching regions.
 
-## クイックスタート（Claude Code）
+## Quick Start (Claude Code)
 
-Claude Code のスキルとして使うと、座標の特定から処理まで全自動で行える。
+As a Claude Code skill, coordinate detection and masking are fully automated.
 
 ```bash
 git clone https://github.com/Sora-bluesky/video-path-mask.git
@@ -18,106 +20,106 @@ cd video-path-mask
 pip install -r requirements.txt
 ```
 
-Claude Code を起動してスキルを実行:
+Launch Claude Code and run the skill:
 
 ```
 > /mask-video recording.mp4
 ```
 
-Claude Code がフレームを抽出し、画像を見てマスク対象の座標を自動特定し、処理を実行する。
+Claude Code extracts frames, identifies sensitive regions via multimodal vision, and runs the masking process.
 
-### グローバルスキルとして使う
+### Install as a global skill
 
-任意のディレクトリから `/mask-video` を使いたい場合:
+To use `/mask-video` from any directory:
 
 ```bash
 cp -r video-path-mask/.claude/skills/mask-video ~/.claude/skills/
 ```
 
-## 手動で使う（CLI）
+## Manual Usage (CLI)
 
-### 1. セットアップ
+### 1. Setup
 
 ```bash
 pip install opencv-python-headless
-# ffmpeg が必要（brew install ffmpeg / apt install ffmpeg / winget install ffmpeg）
+# ffmpeg required (brew install ffmpeg / apt install ffmpeg / winget install ffmpeg)
 
 git clone https://github.com/Sora-bluesky/video-path-mask.git
 cd video-path-mask
 ```
 
-### 2. マスク対象の座標を確認
+### 2. Find the target coordinates
 
 ```bash
-# 最初のフレームを抽出
+# Extract the first frame
 ffmpeg -i input.mp4 -vframes 1 -q:v 2 first_frame.jpg
 ```
 
-画像ビューアで開いて、マスクしたいテキスト（パス、ユーザー名など）の座標を確認する。
+Open in an image viewer and note the coordinates of the text you want to mask.
 
-### 3. 実行
+### 3. Run
 
 ```bash
-# 座標指定（x,y,w,h）
+# By coordinates (x,y,w,h)
 python mask_path.py input.mp4 output.mp4 --region 870,150,120,18
 
-# テンプレート画像を指定
+# By template image
 python mask_path.py input.mp4 output.mp4 --template my_template.png
 ```
 
-### 4. 確認
+### 4. Verify
 
 ```bash
-# マスク済み動画からサンプルフレームを抽出して目視
+# Extract sample frames from the output to check
 ffmpeg -i output.mp4 -vf "fps=1" -q:v 2 check_%03d.jpg
 ```
 
-## オプション
+## Options
 
-| オプション | デフォルト | 説明 |
-|-----------|-----------|------|
-| `--template` | - | テンプレート画像（PNG/JPG） |
-| `--region` | - | テンプレート切り出し座標 `x,y,w,h` |
-| `--threshold` | 0.65 | マッチング閾値（0.0-1.0） |
-| `--pad-left` | 30 | ぼかしの左余白 |
-| `--pad-right` | 150 | ぼかしの右余白 |
-| `--pad-top` | 2 | ぼかしの上余白 |
-| `--pad-bottom` | 2 | ぼかしの下余白 |
-| `--blur-size` | 31 | ぼかし強度 |
-| `--keep-temp` | false | 一時ファイルを残す |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--template` | - | Template image (PNG/JPG) |
+| `--region` | - | Region to crop as template `x,y,w,h` |
+| `--threshold` | 0.65 | Matching threshold (0.0-1.0) |
+| `--pad-left` | 30 | Blur padding left |
+| `--pad-right` | 150 | Blur padding right |
+| `--pad-top` | 2 | Blur padding top |
+| `--pad-bottom` | 2 | Blur padding bottom |
+| `--blur-size` | 31 | Gaussian blur kernel size |
+| `--keep-temp` | false | Keep temporary files |
 
-## 仕組み
+## How It Works
 
 ```
-入力動画
-  ↓ ffmpeg でフレーム抽出（30fps → JPEGファイル群）
-  ↓ OpenCV テンプレートマッチング（全フレーム × テンプレート）
-  ↓ ヒット箇所にガウスぼかし適用
-  ↓ ffmpeg でフレーム再結合（音声も元動画からコピー）
-出力動画
+Input video
+  -> ffmpeg extracts frames (30fps -> JPEG files)
+  -> OpenCV template matching (all frames x template)
+  -> Gaussian blur applied to matched regions
+  -> ffmpeg reassembles frames (audio copied from original)
+Output video
 ```
 
-## よくある質問
+## FAQ
 
-**Q: 動画のどの部分がマスクされるの？**
-テンプレートと一致する箇所だけ。テンプレートに含まれない文字列は一切触らない。
+**Q: What parts of the video get masked?**
+Only regions matching the template. Everything else is untouched.
 
-**Q: 処理時間は？**
-30秒の動画（900フレーム）で1-2分程度。ボトルネックはフレーム単位のマッチング。
+**Q: How long does it take?**
+About 1-2 minutes for a 30-second video (900 frames). The bottleneck is per-frame matching.
 
-**Q: 音声はどうなる？**
-元動画の音声をそのままコピーする。再エンコードしない。
+**Q: What about audio?**
+Audio is copied directly from the original without re-encoding.
 
-**Q: テンプレートの座標がわからない**
-Claude Code のスキルとして使えば、フレーム画像を見て座標を自動特定する。
+**Q: I don't know the coordinates.**
+Use the Claude Code skill -- it views the frame images and auto-detects the coordinates.
 
-**Q: 複数箇所をマスクしたい**
-スクリプトを連続実行する。1回目の出力を2回目の入力にする:
+**Q: I need to mask multiple regions.**
+Chain multiple runs, feeding the output of one into the next:
 ```bash
 python mask_path.py input.mp4 temp.mp4 --region 870,150,120,18
 python mask_path.py temp.mp4 output.mp4 --template apikey_template.png
 ```
 
-## ライセンス
+## License
 
 MIT
