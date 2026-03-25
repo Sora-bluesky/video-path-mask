@@ -59,30 +59,6 @@ def get_video_info(video_path):
     return fps, has_audio
 
 
-def auto_detect_template(frames, scan_count=5):
-    """
-    先頭のフレームをスキャンし、filePath: 行からパステンプレートを自動検出。
-    ターミナル上の filePath: "c:\\Users\\<username>\\... パターンを探す。
-    """
-    # filePath: の直後にあるパス文字列を含む行を探す
-    # 画面右半分（x > 50%）のターミナル領域で filePath 行を検出
-    for frame_path in frames[:scan_count]:
-        img = cv2.imread(frame_path)
-        if img is None:
-            continue
-        h, w = img.shape[:2]
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        # "filePath:" テキストをテンプレートマッチで探すのは難しいので、
-        # ヒューリスティック: 右半分で明るいテキスト行（ターミナル背景は暗い）を走査
-        # パスの特徴: "Users" や "Documents" が含まれる行
-
-        # 別アプローチ: ユーザーに最初のフレームを見せて領域を指定してもらう
-        # ここでは右半分の全行をスキャンして、パス文字列っぽい領域を返す
-        pass
-
-    return None
-
 
 def create_template_from_region(frame_path, x, y, w, h):
     """指定座標からテンプレートを切り出す"""
@@ -162,24 +138,6 @@ def reassemble_video(frames_dir, original_video, output_path, fps):
 
     subprocess.run(cmd, capture_output=True)
 
-
-def interactive_template_setup(frames):
-    """
-    最初のフレームからテンプレートを対話的に設定。
-    座標を指定してもらうか、自動検出を試みる。
-    """
-    print("\n=== テンプレート設定 ===")
-    print(f"最初のフレーム: {frames[0]}")
-    print("このフレームを確認して、マスクしたい領域の座標を指定してください。")
-    print("例: パスが映る行の x,y,w,h を指定")
-    print("    x=870, y=150, w=120, h=18")
-
-    x = int(input("x (左端): "))
-    y = int(input("y (上端): "))
-    w = int(input("w (幅): "))
-    h = int(input("h (高さ): "))
-
-    return create_template_from_region(frames[0], x, y, w, h)
 
 
 def main():
