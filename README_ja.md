@@ -61,10 +61,10 @@ ffmpeg -i input.mp4 -vframes 1 -q:v 2 first_frame.jpg
 
 ```bash
 # 座標指定（x,y,w,h）
-python mask_path.py input.mp4 output.mp4 --region 870,150,120,18
+python scripts/mask_path.py input.mp4 output.mp4 --region 870,150,120,18
 
 # テンプレート画像を指定
-python mask_path.py input.mp4 output.mp4 --template my_template.png
+python scripts/mask_path.py input.mp4 output.mp4 --template my_template.png
 ```
 
 ### 4. 確認
@@ -78,24 +78,27 @@ ffmpeg -i output.mp4 -vf "fps=1" -q:v 2 check_%03d.jpg
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `--template` | - | テンプレート画像（PNG/JPG） |
+| `--template` | - | テンプレート画像（複数指定可: `--template a.png --template b.png`） |
 | `--region` | - | テンプレート切り出し座標 `x,y,w,h` |
 | `--threshold` | 0.65 | マッチング閾値（0.0-1.0） |
 | `--pad-left` | 30 | ぼかしの左余白 |
-| `--pad-right` | 150 | ぼかしの右余白 |
-| `--pad-top` | 2 | ぼかしの上余白 |
-| `--pad-bottom` | 2 | ぼかしの下余白 |
-| `--blur-size` | 31 | ぼかし強度 |
+| `--pad-right` | 400 | ぼかしの右余白 |
+| `--pad-top` | 3 | ぼかしの上余白 |
+| `--pad-bottom` | 3 | ぼかしの下余白 |
+| `--blur-size` | 41 | ぼかし強度（2重適用） |
+| `--detect-interval` | 5 | 検出実行フレーム間隔（間のフレームは前回結果を再利用） |
+| `--crf` | 14 | 出力h264 CRF値（低いほど高品質） |
 | `--keep-temp` | false | 一時ファイルを残す |
 
 ## 仕組み
 
 ```
 入力動画
-  ↓ ffmpeg でフレーム抽出（30fps → JPEGファイル群）
-  ↓ OpenCV テンプレートマッチング（全フレーム × テンプレート）
-  ↓ ヒット箇所にガウスぼかし適用
-  ↓ ffmpeg でフレーム再結合（音声も元動画からコピー）
+  ↓ VideoCapture で直接フレーム読み込み（ディスク展開なし）
+  ↓ OpenCV テンプレートマッチング（Nフレーム間隔、間は前回結果を再利用）
+  ↓ ヒット箇所に2重ガウスぼかし適用
+  ↓ MJPG 中間ファイルに書き出し
+  ↓ ffmpeg で h264 再エンコード + 元動画から音声コピー
 出力動画
 ```
 
@@ -105,7 +108,7 @@ ffmpeg -i output.mp4 -vf "fps=1" -q:v 2 check_%03d.jpg
 テンプレートと一致する箇所だけ。テンプレートに含まれない文字列は一切触らない。
 
 **Q: 処理時間は？**
-30秒の動画（900フレーム）で1-2分程度。ボトルネックはフレーム単位のマッチング。
+デフォルトのフレームスキップ（`--detect-interval 5`）適用時、30秒の動画で30秒〜1分程度。ボトルネックはテンプレートマッチング。
 
 **Q: 音声はどうなる？**
 元動画の音声をそのままコピーする。再エンコードしない。
@@ -114,10 +117,11 @@ ffmpeg -i output.mp4 -vf "fps=1" -q:v 2 check_%03d.jpg
 Claude Code のスキルとして使えば、フレーム画像を見て座標を自動特定する。
 
 **Q: 複数箇所をマスクしたい**
-スクリプトを連続実行する。1回目の出力を2回目の入力にする:
+`--template` を複数指定して1パスで処理する（再エンコードによる品質劣化なし）:
 ```bash
-python mask_path.py input.mp4 temp.mp4 --region 870,150,120,18
-python mask_path.py temp.mp4 output.mp4 --template apikey_template.png
+python scripts/mask_path.py input.mp4 output.mp4 \
+  --template path_template.png \
+  --template apikey_template.png
 ```
 
 ## ライセンス
