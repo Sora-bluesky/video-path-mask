@@ -61,10 +61,10 @@ Open in an image viewer and note the coordinates of the text you want to mask.
 
 ```bash
 # By coordinates (x,y,w,h)
-python mask_path.py input.mp4 output.mp4 --region 870,150,120,18
+python scripts/mask_path.py input.mp4 output.mp4 --region 870,150,120,18
 
 # By template image
-python mask_path.py input.mp4 output.mp4 --template my_template.png
+python scripts/mask_path.py input.mp4 output.mp4 --template my_template.png
 ```
 
 ### 4. Verify
@@ -78,24 +78,27 @@ ffmpeg -i output.mp4 -vf "fps=1" -q:v 2 check_%03d.jpg
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--template` | - | Template image (PNG/JPG) |
+| `--template` | - | Template image (repeatable: `--template a.png --template b.png`) |
 | `--region` | - | Region to crop as template `x,y,w,h` |
 | `--threshold` | 0.65 | Matching threshold (0.0-1.0) |
 | `--pad-left` | 30 | Blur padding left |
-| `--pad-right` | 150 | Blur padding right |
-| `--pad-top` | 2 | Blur padding top |
-| `--pad-bottom` | 2 | Blur padding bottom |
-| `--blur-size` | 31 | Gaussian blur kernel size |
+| `--pad-right` | 400 | Blur padding right |
+| `--pad-top` | 3 | Blur padding top |
+| `--pad-bottom` | 3 | Blur padding bottom |
+| `--blur-size` | 41 | Gaussian blur kernel size (applied twice) |
+| `--detect-interval` | 5 | Run detection every N frames (reuse between) |
+| `--crf` | 14 | Output h264 CRF (lower = better quality) |
 | `--keep-temp` | false | Keep temporary files |
 
 ## How It Works
 
 ```
 Input video
-  -> ffmpeg extracts frames (30fps -> JPEG files)
-  -> OpenCV template matching (all frames x template)
-  -> Gaussian blur applied to matched regions
-  -> ffmpeg reassembles frames (audio copied from original)
+  -> VideoCapture reads frames directly (no disk extraction)
+  -> OpenCV template matching (every N frames, reuse between)
+  -> Double Gaussian blur applied to matched regions
+  -> Write to MJPG intermediate file
+  -> ffmpeg re-encodes h264 + copies audio from original
 Output video
 ```
 
@@ -105,7 +108,7 @@ Output video
 Only regions matching the template. Everything else is untouched.
 
 **Q: How long does it take?**
-About 1-2 minutes for a 30-second video (900 frames). The bottleneck is per-frame matching.
+About 30s–1min for a 30-second video with default frame-skip (`--detect-interval 5`). The bottleneck is template matching.
 
 **Q: What about audio?**
 Audio is copied directly from the original without re-encoding.
@@ -114,10 +117,11 @@ Audio is copied directly from the original without re-encoding.
 Use the Claude Code skill -- it views the frame images and auto-detects the coordinates.
 
 **Q: I need to mask multiple regions.**
-Chain multiple runs, feeding the output of one into the next:
+Pass `--template` multiple times to handle all patterns in a single pass:
 ```bash
-python mask_path.py input.mp4 temp.mp4 --region 870,150,120,18
-python mask_path.py temp.mp4 output.mp4 --template apikey_template.png
+python scripts/mask_path.py input.mp4 output.mp4 \
+  --template path_template.png \
+  --template apikey_template.png
 ```
 
 ## License

@@ -12,7 +12,7 @@ allowed-tools: Bash, Read, Glob
 
 ## 前提
 
-- `mask_path.py` がこのリポジトリのルートに存在すること
+- `scripts/mask_path.py` が存在すること
 - ffmpeg / ffprobe がインストール済みであること
 - Python 3 + OpenCV (`pip install opencv-python-headless`) がインストール済みであること
 
@@ -71,7 +71,7 @@ cv2.imwrite('/tmp/vpm_sample/template.png', template)
 テンプレートは短い固有文字列（`Users\\komei` 等）にする。長すぎると部分一致しにくくなる。
 
 5. パディング方向を判断:
-   - パスの右側に続くテキストが多ければ `--pad-right` を大きく（150-350）
+   - パスの右側に続くテキストが多ければ `--pad-right` を大きく（400-600）
    - APIキーは `--pad-right` をさらに大きく（200-400）
    - テンプレートの左側もカバーする場合は `--pad-left` を調整
 
@@ -96,7 +96,7 @@ print(f"Matches (>=0.65): {len(locations[0])}")
 次に短い動画テスト:
 
 ```bash
-python mask_path.py <input> /tmp/vpm_test.mp4 --template /tmp/vpm_sample/template.png --pad-right <N>
+python scripts/mask_path.py <input> /tmp/vpm_test.mp4 --template /tmp/vpm_sample/template.png --pad-right <N> --detect-interval 5
 ```
 
 処理後、出力フレームを Read ツールで確認:
@@ -111,19 +111,21 @@ python mask_path.py <input> /tmp/vpm_test.mp4 --template /tmp/vpm_sample/templat
 確定したパラメータで全フレームを処理:
 
 ```bash
-python mask_path.py <input> <output> \
+python scripts/mask_path.py <input> <output> \
   --template /tmp/vpm_sample/template.png \
   --threshold 0.65 \
   --pad-left 10 --pad-right <N> \
-  --pad-top 2 --pad-bottom 2 \
-  --blur-size 31
+  --pad-top 3 --pad-bottom 3 \
+  --blur-size 41 \
+  --detect-interval 5
 ```
 
-複数箇所をマスクする場合は、1回目の出力を2回目の入力にして連続実行:
+複数箇所をマスクする場合は、`--template` を複数指定して1パスで処理する（再エンコードによる品質劣化なし）:
 
 ```bash
-python mask_path.py <input> temp_masked.mp4 --template /tmp/vpm_sample/template1.png
-python mask_path.py temp_masked.mp4 <output> --template /tmp/vpm_sample/template2.png
+python scripts/mask_path.py <input> <output> \
+  --template /tmp/vpm_sample/template1.png \
+  --template /tmp/vpm_sample/template2.png
 ```
 
 ### Phase 6: 結果確認
